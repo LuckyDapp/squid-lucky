@@ -65,13 +65,13 @@ interface AccountRecord {
 function extractAccountRecords(ctx: Ctx): AccountRecord[] {
     const records: AccountRecord[] = []
     for (const block of ctx.blocks) {
-        console.log("block",block)
+        //console.log("block",block)
         for (const item of block.items) {
-            console.log("item",item)
+            //console.log("item",item)
             if (item.name === 'Contracts.ContractEmitted' && item.event.args.contract === REWARD_CONTRACT_ADDRESS) {
                 const data = item.event.args.data;
-                const event = lucky_raffle.decodeEvent(data)
-                console.log("event",event)
+                const event = reward_manager.decodeEvent(data)
+                console.log("event",event.__kind)
                 /*
                 if (event.__kind === 'Transfer') {
                     records.push({
