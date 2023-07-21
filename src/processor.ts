@@ -3,7 +3,7 @@ import * as ss58 from "@subsquid/ss58"
 import {toHex, decodeHex} from "@subsquid/util-internal-hex"
 import {BatchContext, BatchProcessorItem, SubstrateBatchProcessor} from "@subsquid/substrate-processor"
 import {Store, TypeormDatabase} from "@subsquid/typeorm-store"
-import {In} from "typeorm"
+import {Like, In} from "typeorm"
 import {DappsStakingBondAndStakeEvent, DappsStakingNewDappStakingEraEvent, DappsStakingNominationTransferEvent, DappsStakingRewardEvent, DappsStakingUnbondAndUnstakeEvent} from "./types/events"
 
 import * as lucky_raffle from "./abi/lucky_raffle"
@@ -147,7 +147,7 @@ const ink_processor = new SubstrateBatchProcessor()
         }
     } as const)
     
-    /*
+/*
 ink_processor.run(database, async ctx => {
     // Process txs with dedicated fn
     const txs = inkExtractAccountRecords(ctx)
@@ -162,35 +162,24 @@ function inkExtractAccountRecords(ctx: Ctx): AccountRecord[] {
             if (item.name === 'Contracts.ContractEmitted' && item.event.args.contract === REWARD_CONTRACT_ADDRESS) {
                 const data = item.event.args.data;
                 const event = reward_manager.decodeEvent(data)
-                //console.log(REWARD_CONTRACT_ADDRESS,event.__kind)
-                /*
-                if (event.__kind === 'Transfer') {
-                    records.push({
-                        id: item.event.id,
-                        from: event.from && ss58.codec(SS58_PREFIX).encode(event.from),
-                        to: event.to && ss58.codec(SS58_PREFIX).encode(event.to),
-                        amount: event.value,
-                        block: block.header.height,
-                        timestamp: new Date(block.header.timestamp)
-                    })
-                }*/
+                console.log(REWARD_CONTRACT_ADDRESS,event.__kind)
+               
+                if (event.__kind === 'PendingReward') {
+                   
+                }
+                if (event.__kind === 'RewardsClaimed') {
+                   
+                }
 
             }
             if (item.name === 'Contracts.ContractEmitted' && item.event.args.contract === RAFFLE_CONTRACT_ADDRESS) {
                 const data = item.event.args.data;
                 const event = lucky_raffle.decodeEvent(data)
-                //console.log(RAFFLE_CONTRACT_ADDRESS,event.__kind)
-                /*
-                if (event.__kind === 'Transfer') {
-                    records.push({
-                        id: item.event.id,
-                        from: event.from && ss58.codec(SS58_PREFIX).encode(event.from),
-                        to: event.to && ss58.codec(SS58_PREFIX).encode(event.to),
-                        amount: event.value,
-                        block: block.header.height,
-                        timestamp: new Date(block.header.timestamp)
-                    })
-                }*/
+                console.log(RAFFLE_CONTRACT_ADDRESS,event.__kind)
+                
+                if (event.__kind === 'RaffleDone') {
+                   
+                }
 
             }
         }
@@ -292,7 +281,16 @@ substrate_processor.run(database, async (ctx) => {
     const stakes: StakeRecord[] = [];
     const accounts: AccountRecord[] = [];
     const developper_rewards: DevelopperRewardRecord[] = [];
-    let current_era: bigint = BigInt(0);
+
+    const last_era = await ctx.store.findOne(DappStakingEra,{
+        where: {
+            id: Like("%"),
+        },
+        order: {
+            era: "DESC",
+        },
+    })
+    let current_era: bigint = BigInt(last_era ? last_era.era : 0);
 
     for (const block of ctx.blocks) {
         
@@ -311,6 +309,7 @@ substrate_processor.run(database, async (ctx) => {
                 current_era = era.era;
                 //await ctx.store.insert(new DappStakingEra(era))
             }
+
             if (((item.name === "DappsStaking.BondAndStake"))){
                 const e = new DappsStakingBondAndStakeEvent(ctx,item.event);
                 let rec :{account: Uint8Array, contract: SmartContract, amount: bigint}
@@ -359,6 +358,29 @@ substrate_processor.run(database, async (ctx) => {
                     stakes.push(stake)
                 }
             }
+
+            if (((item.name === "DappsStaking.NominationTransfer"))){
+                const e = new DappsStakingNominationTransferEvent(ctx,item.event);
+                let rec :{account: Uint8Array, origin: SmartContract, amount: bigint, target: SmartContract}
+                let [account, origin, amount, target] = e.asV49;
+                rec={account, origin, amount, target}
+                const is_target = toHex(target.value) === DAPP_CONTRACT_ADDRESS
+                const is_origin = toHex(origin.value) === DAPP_CONTRACT_ADDRESS
+
+                if (is_origin || is_target) {
+                    const tx_from = ss58.codec("astar").encode(account);
+                    const stake = {
+                        id: item.event.id,  
+                        account: tx_from,
+                        amount: is_target ? BigInt(0) + BigInt(amount) : BigInt(0) - BigInt(amount) ,
+                        type: "transfer",
+                        era: current_era,
+                        blockNumber: BigInt(block.header.height)
+                    }
+                    stakes.push(stake)
+                }
+            }
+
             /* Subtrate event reward
             we only track DevelopperRewards, 
             so we check if dest account is our developper account
@@ -369,23 +391,19 @@ substrate_processor.run(database, async (ctx) => {
                 let [account, contract, era, amount ] = e.asV13;
                 rec={account, contract, era, amount}
                 
-//console.log("DappsStaking.Reward","account",account, "contract", contract, "era", era, "amount", amount)
+                //console.log("DappsStaking.Reward","account",account, "contract", contract, "era", era, "amount", amount)
 
                 const is_developper = ss58.codec("astar").encode(account) === DEVELOPPER_ADDRESS_SS58;
                 const is_contract = toHex(contract.value) === DAPP_CONTRACT_ADDRESS;
 
-                if (is_contract || is_developper) {
-                    console.log("developper",ss58.codec("astar").encode(account))
-                    console.log("contract",toHex(contract.value))
-                }
-
                 if ( is_developper && is_contract) {
+                        /*
                         console.log(
                         "account",ss58.codec("astar").encode(account),
                         "contract",ss58.codec("astar").encode(contract.value),
                         "era",era,
                         "amount",amount)
-                  
+                        */
                     const developper_reward = {
                         id: item.event.id,  
                         account: ss58.codec("astar").encode(account),
@@ -418,7 +436,7 @@ substrate_processor.run(database, async (ctx) => {
     let store_accounts = await ctx.store.findBy(Account, {id: In([...accounts_ids])}).then(accounts => {
         return new Map(accounts.map(a => [a.id, a]))
     })
-    
+
     /********* STAKES ********/
     // find all stake ids
     let stakes_ids = new Set<string>()
