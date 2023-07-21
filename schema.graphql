@@ -12,6 +12,7 @@ type Account @entity {
 type Stake @entity {
   id: ID! # Extrinsic hash
   account: Account!
+  type: String!
   amount: BigInt!
   era: BigInt!
   blockNumber: BigInt!

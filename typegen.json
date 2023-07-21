@@ -1,0 +1,15 @@
+{
+  "outDir": "src/types",
+  "specVersions": "https://shibuya.archive.subsquid.io/graphql",
+  "events": [
+    "DappsStaking.BondAndStake",
+    "DappsStaking.UnbondAndUnstake",
+    "DappsStaking.NominationTransfer",
+    "DappsStaking.Reward",
+    "DappsStaking.NewDappStakingEra"
+  ],
+  "calls": [ 
+  ],
+  "storage": [
+  ]
+}

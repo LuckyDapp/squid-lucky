@@ -15,6 +15,9 @@ export class Stake {
     @ManyToOne_(() => Account, {nullable: true})
     account!: Account
 
+    @Column_("text", {nullable: false})
+    type!: string
+
     @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
     amount!: bigint
 
