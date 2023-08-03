@@ -17,4 +17,10 @@ export class RewardsClaimed {
 
     @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
     amount!: bigint
+
+    @Column_("numeric", {transformer: marshal.bigintTransformer, nullable: false})
+    blockNumber!: bigint
+
+    @Column_("text", {nullable: false})
+    timestamp!: string
 }

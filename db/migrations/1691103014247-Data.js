@@ -1,12 +1,12 @@
-module.exports = class Data1689931482396 {
-    name = 'Data1689931482396'
+module.exports = class Data1691103014247 {
+    name = 'Data1691103014247'
 
     async up(db) {
         await db.query(`CREATE TABLE "stake" ("id" character varying NOT NULL, "type" text NOT NULL, "amount" numeric NOT NULL, "era" numeric NOT NULL, "block_number" numeric NOT NULL, "account_id" character varying, CONSTRAINT "PK_8cfd82a65916af9d517d25a894e" PRIMARY KEY ("id"))`)
         await db.query(`CREATE INDEX "IDX_48a0a4f6ef7ee7a7395cdce1a2" ON "stake" ("account_id") `)
         await db.query(`CREATE TABLE "reward" ("id" character varying NOT NULL, "era" numeric NOT NULL, "amount" numeric NOT NULL, "account_id" character varying, CONSTRAINT "PK_a90ea606c229e380fb341838036" PRIMARY KEY ("id"))`)
         await db.query(`CREATE INDEX "IDX_4a8843fdb7840bfd00f8e4f7b3" ON "reward" ("account_id") `)
-        await db.query(`CREATE TABLE "rewards_claimed" ("id" character varying NOT NULL, "amount" numeric NOT NULL, "account_id" character varying, CONSTRAINT "PK_1cd951d72b1ba32f8ae09fe8dbd" PRIMARY KEY ("id"))`)
+        await db.query(`CREATE TABLE "rewards_claimed" ("id" character varying NOT NULL, "amount" numeric NOT NULL, "block_number" numeric NOT NULL, "timestamp" text NOT NULL, "account_id" character varying, CONSTRAINT "PK_1cd951d72b1ba32f8ae09fe8dbd" PRIMARY KEY ("id"))`)
         await db.query(`CREATE INDEX "IDX_40b47fbfeda6b6132002cf4762" ON "rewards_claimed" ("account_id") `)
         await db.query(`CREATE TABLE "account" ("id" character varying NOT NULL, "total_stake" numeric NOT NULL, "total_rewards" numeric NOT NULL, "total_claimed" numeric NOT NULL, "total_pending" numeric NOT NULL, CONSTRAINT "PK_54115ee388cdb6d86bb4bf5b2ea" PRIMARY KEY ("id"))`)
         await db.query(`CREATE TABLE "developer_reward" ("id" character varying NOT NULL, "era" numeric NOT NULL, "amount" numeric NOT NULL, "account_id" character varying, CONSTRAINT "PK_22da28e4dc19dd82e6d45ce3e62" PRIMARY KEY ("id"))`)

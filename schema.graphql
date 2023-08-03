@@ -43,6 +43,7 @@ type RaffleDone @entity {
   nbWinners: BigInt!
 	nbParticipants: BigInt!
 	totalValue: BigInt!
+  # totalStaked: BigInt!
 }
 
 type Reward @entity {
@@ -50,10 +51,15 @@ type Reward @entity {
   account: Account!
   era: BigInt!
   amount: BigInt!
+  # blockNumber: BigInt!
+  # timestamp: String!
+  # stakedAmount: BigInt!
 }
 
 type RewardsClaimed @entity {
   id: ID! # Transaction hash
   account: Account!
   amount: BigInt!
+  blockNumber: BigInt!
+  timestamp: String!
 }
