@@ -431,9 +431,6 @@ processor.run(database, async (ctx) => {
     let store_accounts = await ctx.store.findBy(Account, {id: In([...accounts_ids])}).then(accounts => {
         return new Map(accounts.map(a => [a.id, a]))
     })
-    console.log("size at beggining");
-    console.log("account_ids",accounts_ids.size)
-    console.log("store_accounts", store_accounts.size);
 
     /********* STAKES ******************************/
     /* every stakes are new objects, no update */
