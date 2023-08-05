@@ -36,11 +36,11 @@ const DAPP_SS58_PREFIX = ss58.decode(DAPP_CONTRACT_ADDRESS_SS58).prefix;
 
 const DEVELOPPER_ADDRESS_SS58 = 'WayJSoeDvHLJ8rXPqrPyQQwznntbxvjwvmq1AKBpu9phYHr';
 const DEVELOPPER_ADDRESS = toHex(ss58.decode(DEVELOPPER_ADDRESS_SS58).bytes);
-console.log("hex devp address",DEVELOPPER_ADDRESS);
+console.log("hex developper address",DEVELOPPER_ADDRESS);
 const DEVELOPPER_ADDRESS_PREFIX = ss58.decode(DEVELOPPER_ADDRESS_SS58).prefix;
 
-// interface for all objects that will be created while looping through the batch's block
-// no Account Interface because we won't populate an array of account during the batch
+// interface for all objects that will be created while looping through the batch's blocks
+// there is no Account Interface because we won't populate an array of account during the batch
 interface StakeRecord {
     id: string 
     account: string
@@ -232,6 +232,7 @@ processor.run(database, async (ctx) => {
     let current_era: bigint = BigInt(last_era ? last_era.era : 0);
 
     // loop through each block of the batch and populate all arrays of objects
+    // for each Object we insert a string in "account" and we will deal with it later
     for (const block of ctx.blocks) {
         
         for (const item of block.items) {
@@ -262,8 +263,8 @@ processor.run(database, async (ctx) => {
                 if (event.__kind === 'PendingReward') {
                
                     const reward = {
-                        id: item.event.id,
-                        account:ss58.codec("astar").encode(event.account),
+                        id: item.event.id, 
+                        account:ss58.codec("astar").encode(event.account), // string
                         era: BigInt(event.era),
                         amount: event.amount
                     };
@@ -272,7 +273,7 @@ processor.run(database, async (ctx) => {
                 if (event.__kind === 'RewardsClaimed') {
                     const reward_claimed = {
                         id: item.event.id,
-                        account: ss58.codec("astar").encode(event.account),
+                        account: ss58.codec("astar").encode(event.account), // string
                         amount: event.amount,
                         blockNumber: BigInt(block.header.height),
                         timestamp: String(block.header.timestamp)
@@ -306,7 +307,7 @@ processor.run(database, async (ctx) => {
                     const tx_from = ss58.codec("astar").encode(decodeHex(item.event.args[0]));
                     const stake = {
                         id: item.event.id,  
-                        account: tx_from,
+                        account: tx_from, // string
                         amount: BigInt(item.event.args[2]),
                         type: "stake",
                         era: current_era,
@@ -347,7 +348,7 @@ processor.run(database, async (ctx) => {
                     const tx_from = ss58.codec("astar").encode(account);
                     const stake = {
                         id: item.event.id,  
-                        account: tx_from,
+                        account: tx_from, // string
                         amount: is_target ? BigInt(0) + BigInt(amount) : BigInt(0) - BigInt(amount) ,
                         type: "transfer",
                         era: current_era,
@@ -373,7 +374,7 @@ processor.run(database, async (ctx) => {
                 if ( is_developper && is_contract) {
                     const developper_reward = {
                         id: item.event.id,  
-                        account: ss58.codec("astar").encode(account),
+                        account: ss58.codec("astar").encode(account), // string
                         era: current_era,
                         amount: BigInt(amount),
                     };
@@ -384,7 +385,7 @@ processor.run(database, async (ctx) => {
     }
 
     /***********************************************/
-    /** persist the objects ************************/
+    /** Almost done, persist the objects ************************/
     /***********************************************/
 
     /********* ERAS ********************************/
@@ -407,7 +408,8 @@ processor.run(database, async (ctx) => {
      * 
      * we get all accounts addresses from these objects
      * and add them to accounts_id array
-     * 
+     * this array will be used to query the store and get existing objects
+     * we use it as an arg in function getAccount when creating other entities
     */
 
     let accounts_ids = new Set<string>()
@@ -429,6 +431,9 @@ processor.run(database, async (ctx) => {
     let store_accounts = await ctx.store.findBy(Account, {id: In([...accounts_ids])}).then(accounts => {
         return new Map(accounts.map(a => [a.id, a]))
     })
+    console.log("size at beggining");
+    console.log("account_ids",accounts_ids.size)
+    console.log("store_accounts", store_accounts.size);
 
     /********* STAKES ******************************/
     /* every stakes are new objects, no update */
@@ -525,6 +530,26 @@ processor.run(database, async (ctx) => {
         s_rd.totalValue = rd.totalValue;
         await ctx.store.insert(s_rd);
     }
+
+    /** FIX for backward compatibility of queries in dapp
+     * in a former implementation of indexer we used different prefix for ink and substrate events
+     * --> prefix 42 for ink part 
+     * --> prefix 5  for substrate part 
+     * 
+     * this implementation uses prefix 5 everywhere
+     * for backward compatibility we temporary want to have a copy of the Accounts entities, using prefix 42
+     */
+
+    // query again store for Accouts with all accounts_ids from other entities created this batch that affect Accounts
+    // this time, all Accounts will be found in the store
+    // we just create one new object and change the ID for prefix 42
+    await ctx.store.findBy(Account, {id: In([...accounts_ids])}).then(async (accounts) => {
+        for (let a of accounts) {
+            const new_a = {...a};
+            new_a.id = ss58.codec("substrate").encode(ss58.decode(a.id).bytes);
+            await ctx.store.save(new Account(new_a));
+        }
+    })
 
 })
 /**
