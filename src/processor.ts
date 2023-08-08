@@ -1,4 +1,4 @@
-import { lookupArchive } from "@subsquid/archive-registry"
+import { KnownArchives, KnownArchivesEVM, KnownArchivesSubstrate, lookupArchive } from "@subsquid/archive-registry"
 import * as ss58 from "@subsquid/ss58"
 import {toHex, decodeHex} from "@subsquid/util-internal-hex"
 import {SubstrateBatchProcessor} from "@subsquid/substrate-processor"
@@ -11,35 +11,25 @@ import * as reward_manager from "./abi/reward_manager"
 
 import {Account, DappStakingEra, DeveloperReward, Reward, Stake, RewardsClaimed, RaffleDone} from "./model/generated"
 import { SmartContract } from "./types/v7"
- 
-const database = new TypeormDatabase();
 
-// Init constants
+import {Network, start_block, RAFFLE_CONTRACT_ADDRESS_SS58, REWARD_CONTRACT_ADDRESS_SS58, DAPP_CONTRACT_ADDRESS_SS58, DEVELOPPER_ADDRESS_SS58 } from "./constants"
 
-const network = "shibuya";
-const start_block = {"shibuya":3_393_298};
+// Get network from env, 
+// default shibuya
+const network:string = process.env.NETWORK ? process.env.NETWORK as unknown as string : "shibuya" ;
+console.log("NETWORK",network)
 
-const RAFFLE_CONTRACT_ADDRESS_SS58 = 'arobt7C1EEULtwsVhxSQnjA5ajrTsZnUBBU5fJV7z356Sp7'; // Shibuya
-const RAFFLE_CONTRACT_ADDRESS = toHex(ss58.decode(RAFFLE_CONTRACT_ADDRESS_SS58).bytes);
+// Init addresses
+const RAFFLE_CONTRACT_ADDRESS = toHex(ss58.decode(RAFFLE_CONTRACT_ADDRESS_SS58[network as unknown as keyof Network]).bytes);
 console.log("hex raffle address",RAFFLE_CONTRACT_ADDRESS);
-const RAFFLE_SS58_PREFIX = ss58.decode(RAFFLE_CONTRACT_ADDRESS_SS58).prefix;
-
-const REWARD_CONTRACT_ADDRESS_SS58 = 'WDtNnQgygsCXKfjdvL5TgimewWhcBhJgSSCkb5u5pzZJTpR'; // Shibuya
-const REWARD_CONTRACT_ADDRESS = toHex(ss58.decode(REWARD_CONTRACT_ADDRESS_SS58).bytes);
+const REWARD_CONTRACT_ADDRESS = toHex(ss58.decode(REWARD_CONTRACT_ADDRESS_SS58[network as unknown as keyof Network]).bytes);
 console.log("hex reward address",REWARD_CONTRACT_ADDRESS);
-const REWARD_SS58_PREFIX = ss58.decode(REWARD_CONTRACT_ADDRESS_SS58).prefix;
-
-const DAPP_CONTRACT_ADDRESS_SS58 = 'Xz3sHvmRgRY3mt3qQ3SjZ3aUPQTfHkj4rKeoQM6VJrenD3W';
-const DAPP_CONTRACT_ADDRESS = toHex(ss58.decode(DAPP_CONTRACT_ADDRESS_SS58).bytes);
+const DAPP_CONTRACT_ADDRESS = toHex(ss58.decode(DAPP_CONTRACT_ADDRESS_SS58[network as unknown as keyof Network]).bytes);
 console.log("hex dapp address",DAPP_CONTRACT_ADDRESS);
-const DAPP_SS58_PREFIX = ss58.decode(DAPP_CONTRACT_ADDRESS_SS58).prefix;
-
-const DEVELOPPER_ADDRESS_SS58 = 'WayJSoeDvHLJ8rXPqrPyQQwznntbxvjwvmq1AKBpu9phYHr';
-const DEVELOPPER_ADDRESS = toHex(ss58.decode(DEVELOPPER_ADDRESS_SS58).bytes);
+const DEVELOPPER_ADDRESS = toHex(ss58.decode(DEVELOPPER_ADDRESS_SS58[network as unknown as keyof Network]).bytes);
 console.log("hex developper address",DEVELOPPER_ADDRESS);
-const DEVELOPPER_ADDRESS_PREFIX = ss58.decode(DEVELOPPER_ADDRESS_SS58).prefix;
 
-// interface for all objects that will be created while looping through the batch's blocks
+// interface for objects that will be created while looping through the batch's blocks
 // there is no Account Interface because we won't populate an array of account during the batch
 interface StakeRecord {
     id: string 
@@ -70,22 +60,22 @@ interface RaffleRecord {
     nbWinners: bigint
     nbParticipants: bigint
     totalValue: bigint
-  }
+}
 
-  interface RewardRecord {
+interface RewardRecord {
     id: string
     account: string
     era: bigint
     amount: bigint
-  }
+}
 
-  interface RewardClaimedRecord {
+interface RewardClaimedRecord {
     id: string
     account: string
     amount: bigint
     blockNumber: bigint
     timestamp: string
-  }
+}
 
 // function getAccount is used to lookup the existing account from the given map in param
 // if not exists, create a new one and init amounts with 0
@@ -108,9 +98,11 @@ function getAccount(m: Map<string, Account>, id: string): Account {
 /* subscribe to SUBSTRATE events */
 /******************************* */
 
+const start_block_network:number = start_block[network as unknown as keyof Network];
+
 export const processor = new SubstrateBatchProcessor()
     .setDataSource({
-        archive: lookupArchive(network, {release: 'FireSquid'}),
+        archive: lookupArchive(network as unknown as KnownArchivesSubstrate, {release: 'FireSquid'}),
     })
     .addEvent('DappsStaking.BondAndStake', {
         data: {
@@ -123,7 +115,7 @@ export const processor = new SubstrateBatchProcessor()
             },
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const)
     .addEvent('DappsStaking.UnbondAndUnstake', {
@@ -137,7 +129,7 @@ export const processor = new SubstrateBatchProcessor()
             },
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const)
     .addEvent('DappsStaking.NominationTransfer', {
@@ -151,7 +143,7 @@ export const processor = new SubstrateBatchProcessor()
             },
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const)
     .addEvent('DappsStaking.Reward', {
@@ -165,7 +157,7 @@ export const processor = new SubstrateBatchProcessor()
             },
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const)
     .addEvent('DappsStaking.NewDappStakingEra', {
@@ -192,7 +184,7 @@ export const processor = new SubstrateBatchProcessor()
             event: {args: true}
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const)
     .addContractsContractEmitted(RAFFLE_CONTRACT_ADDRESS, {
@@ -200,7 +192,7 @@ export const processor = new SubstrateBatchProcessor()
             event: {args: true}
         },
         range: {
-            from: start_block[network]
+            from: start_block_network
         }
     } as const);
 
@@ -208,7 +200,7 @@ export const processor = new SubstrateBatchProcessor()
 /************************ */
 /* LFG! Run the processor */
 /************************ */
-
+const database = new TypeormDatabase();
 processor.run(database, async (ctx) => {
 
     // we create an array for each object type
@@ -368,7 +360,7 @@ processor.run(database, async (ctx) => {
                 let [account, contract, era, amount ] = e.asV13;
                 rec={account, contract, era, amount};
                 
-                const is_developper = ss58.codec("astar").encode(account) === DEVELOPPER_ADDRESS_SS58;
+                const is_developper = ss58.codec("astar").encode(account) === DEVELOPPER_ADDRESS_SS58 as unknown as string;
                 const is_contract = toHex(contract.value) === DAPP_CONTRACT_ADDRESS;
 
                 if ( is_developper && is_contract) {

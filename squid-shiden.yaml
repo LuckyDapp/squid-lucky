@@ -1,12 +1,14 @@
 manifestVersion: subsquid.io/v0.1
-name: squid-lucky
+name: squid-lucky-shiden
 version: 1
-description: 'Ink! contract indexing squid  '
+description: 'Lucky Dapp index for Shiden Network'
 build: 
 deploy:
   addons:
     postgres: 
   processor:
+    env: 
+      NETWORK: 'shiden'
     cmd:
       - node
       - lib/processor

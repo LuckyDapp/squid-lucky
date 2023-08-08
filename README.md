@@ -39,6 +39,9 @@ npm ci
 sqd up
 
 # 4. Start the processor
+#    default network is shibuya
+#    to change it, set NETWORK in .env 
+#    or manually change `network` var default value in processor.ts
 sqd process
 
 # 5. The command above will block the terminal
@@ -49,3 +52,16 @@ sqd process
 #    and run
 sqd serve
 ```
+
+## Deploy
+
+current available networks are Shibuya and Shiden
+to deploy a version on a network, use the corresponding yml file when deploying
+
+eg, for shiden:
+`sqd deploy -m squid-shiden.yaml .`
+
+the deployed index for production can be found here:
+
+- https://squid.subsquid.io/squid-lucky-shibuya/graphql
+- https://squid.subsquid.io/squid-lucky-shiden/graphql
