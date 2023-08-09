@@ -1,10 +1,11 @@
+
 # Lucky squid
 
 This is a squid for indexing Lucky dApp contracts, for the Astar, Shiden and Shibuya network.
 
 Lucky dApp is available here: https://lucky.substrate.fi/
 
-this index get events from substrate or !ink events on 3 different contract, you can found these contracts here: [https://github.com/GuiGou12358/lucky-contracts/tree/main/contracts]()
+This index get events from substrate or !ink events on 3 different contract, you can found these contracts here: [https://github.com/GuiGou12358/lucky-contracts/tree/main/contracts]()
 
 ## Event list
 
@@ -14,19 +15,19 @@ this index get events from substrate or !ink events on 3 different contract, you
   - DappsStaking.NominationTransfer
   - DappsStaking.Reward
   - DappsStaking.NewDappStakingEra
-- lucky_raffle (!ink event)
+- lucky_raffle (!ink events)
   - RaffleDone
-- reward_manager (!ink event)
+- reward_manager (!ink events)
   - PendingReward
   - RewardsClaimed
 
-check [processor.ts](src/processor.ts) for events handling
+Check [processor.ts](src/processor.ts) for events handling.
 
 ## Query
 
-#### Accounts
+### Accounts
 
-Get informations from a specific account
+Get informations from a specific account:
 
 ```
 {
@@ -40,7 +41,7 @@ Get informations from a specific account
 }
 ```
 
-Get the 10 accounts with the higher stake amount
+Get the 10 accounts with the higher stake amount:
 
 ```
 {
@@ -51,7 +52,7 @@ Get the 10 accounts with the higher stake amount
 }
 ```
 
-All Accounts with pending rewards
+All Accounts with pending rewards:
 
 ```
 {
@@ -62,9 +63,9 @@ All Accounts with pending rewards
 }
 ```
 
-#### Stakes
+### Stakes
 
-Last 100 stake activity
+Last 100 stake activity:
 
 ```
 {
@@ -80,12 +81,12 @@ Last 100 stake activity
 }
 ```
 
-Note that the stake entity store stake, unstake, and transfer activity
-This is specified in the 'type' field
+Note that the stake entity store stake, unstake, and transfer activity.
+This is specified in the 'type' field.
 
-#### Rewards
+### Rewards
 
-last 100 Rewards won from the raffle contract
+Last 100 Rewards won from the raffle contract:
 
 ```
 {
@@ -99,9 +100,9 @@ last 100 Rewards won from the raffle contract
 }
 ```
 
-#### RewardsClaimed
+### RewardsClaimed
 
-Last 100 rewardsClaimed by raffle winners
+Last 100 rewardsClaimed by raffle winners:
 
 ```
 {
@@ -116,9 +117,9 @@ Last 100 rewardsClaimed by raffle winners
 }
 ```
 
-#### DeveloperRewards
+### DeveloperRewards
 
-Last 10 DeveloperRewards distributed to developer address
+Last 10 DeveloperRewards distributed to developer address:
 
 ```
 {
@@ -164,13 +165,14 @@ sqd serve
 
 ## Deploy
 
-current available networks are Shibuya and Shiden
-to deploy a version on a network, use the corresponding yml file when deploying
+Current available networks are Shibuya and Shiden.
+
+To deploy a version on a network, use the corresponding yml file when deploying.
 
 eg, for shiden:
 `sqd deploy -m squid-shiden.yaml .`
 
-the deployed index for production can be found here:
+The deployed index for production can be found here:
 
 - https://squid.subsquid.io/squid-lucky-shibuya/graphql
 - https://squid.subsquid.io/squid-lucky-shiden/graphql

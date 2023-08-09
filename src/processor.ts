@@ -15,7 +15,7 @@ import { SmartContract } from "./types/v7"
 import {Network, start_block, RAFFLE_CONTRACT_ADDRESS_SS58, REWARD_CONTRACT_ADDRESS_SS58, DAPP_CONTRACT_ADDRESS_SS58, DEVELOPPER_ADDRESS_SS58 } from "./constants"
 
 // Get network from env, 
-// default shibuya
+// default shibuya,
 const network:string = process.env.NETWORK ? process.env.NETWORK as unknown as string : "shibuya" ;
 console.log("NETWORK",network)
 
@@ -350,19 +350,20 @@ processor.run(database, async (ctx) => {
                 }
             }
 
-            /* Subtrate event reward
+            /* 
             as we only track DevelopperRewards, 
             we just check if dest account is our developper account
             */
             if (((item.name === "DappsStaking.Reward"))){
+                
                 const e = new DappsStakingRewardEvent(ctx,item.event);
                 let rec :{account: Uint8Array, contract: SmartContract, era: number,  amount: bigint};
                 let [account, contract, era, amount ] = e.asV13;
                 rec={account, contract, era, amount};
-                
-                const is_developper = ss58.codec("astar").encode(account) === DEVELOPPER_ADDRESS_SS58 as unknown as string;
-                const is_contract = toHex(contract.value) === DAPP_CONTRACT_ADDRESS;
 
+                const is_developper = toHex(ss58.decode(ss58.codec("astar").encode(account)).bytes) === DEVELOPPER_ADDRESS;
+                const is_contract = toHex(contract.value) === DAPP_CONTRACT_ADDRESS;
+                
                 if ( is_developper && is_contract) {
                     const developper_reward = {
                         id: item.event.id,  
@@ -541,6 +542,7 @@ processor.run(database, async (ctx) => {
     })
 
 })
+
 /**
                                                                                                                                      
                                 .::-----:.                   .::---::.                          
@@ -581,25 +583,30 @@ processor.run(database, async (ctx) => {
                                 .....             .====:          ....                          
                                                     :===-                                        
                                                     .                   
-
-LLLLLLLLLLL            UUUUUUUU     UUUUUUUU       CCCCCCCCCCCCCKKKKKKKKK    KKKKKKKYYYYYYY       YYYYYYY
-L:::::::::L            U::::::U     U::::::U    CCC::::::::::::CK:::::::K    K:::::KY:::::Y       Y:::::Y
-L:::::::::L            U::::::U     U::::::U  CC:::::::::::::::CK:::::::K    K:::::KY:::::Y       Y:::::Y
-LL:::::::LL            UU:::::U     U:::::UU C:::::CCCCCCCC::::CK:::::::K   K::::::KY::::::Y     Y::::::Y
-  L:::::L               U:::::U     U:::::U C:::::C       CCCCCCKK::::::K  K:::::KKKYYY:::::Y   Y:::::YYY
-  L:::::L               U:::::D     D:::::UC:::::C                K:::::K K:::::K      Y:::::Y Y:::::Y   
-  L:::::L               U:::::D     D:::::UC:::::C                K::::::K:::::K        Y:::::Y:::::Y    
-  L:::::L               U:::::D     D:::::UC:::::C                K:::::::::::K          Y:::::::::Y     
-  L:::::L               U:::::D     D:::::UC:::::C                K:::::::::::K           Y:::::::Y      
-  L:::::L               U:::::D     D:::::UC:::::C                K::::::K:::::K           Y:::::Y       
-  L:::::L               U:::::D     D:::::UC:::::C                K:::::K K:::::K          Y:::::Y       
-  L:::::L         LLLLLLU::::::U   U::::::U C:::::C       CCCCCCKK::::::K  K:::::KKK       Y:::::Y       
-LL:::::::LLLLLLLLL:::::LU:::::::UUU:::::::U  C:::::CCCCCCCC::::CK:::::::K   K::::::K       Y:::::Y       
-L::::::::::::::::::::::L UU:::::::::::::UU    CC:::::::::::::::CK:::::::K    K:::::K    YYYY:::::YYYY    
-L::::::::::::::::::::::L   UU:::::::::UU        CCC::::::::::::CK:::::::K    K:::::K    Y:::::::::::Y    
-LLLLLLLLLLLLLLLLLLLLLLLL     UUUUUUUUU             CCCCCCCCCCCCCKKKKKKKKK    KKKKKKK    YYYYYYYYYYYYY    
-             
-                             
+                                                                                                          
+                                                                                                          
+LLLLLLLLLLL                                                   kkkkkkkk                                    
+L:::::::::L                                                   k::::::k                                    
+L:::::::::L                                                   k::::::k                                    
+LL:::::::LL                                                   k::::::k                                    
+  L:::::L               uuuuuu    uuuuuu      cccccccccccccccc k:::::k    kkkkkkkyyyyyyy           yyyyyyy
+  L:::::L               u::::u    u::::u    cc:::::::::::::::c k:::::k   k:::::k  y:::::y         y:::::y 
+  L:::::L               u::::u    u::::u   c:::::::::::::::::c k:::::k  k:::::k    y:::::y       y:::::y  
+  L:::::L               u::::u    u::::u  c:::::::cccccc:::::c k:::::k k:::::k      y:::::y     y:::::y   
+  L:::::L               u::::u    u::::u  c::::::c     ccccccc k::::::k:::::k        y:::::y   y:::::y    
+  L:::::L               u::::u    u::::u  c:::::c              k:::::::::::k          y:::::y y:::::y     
+  L:::::L               u::::u    u::::u  c:::::c              k:::::::::::k           y:::::y:::::y      
+  L:::::L         LLLLLLu:::::uuuu:::::u  c::::::c     ccccccc k::::::k:::::k           y:::::::::y       
+LL:::::::LLLLLLLLL:::::Lu:::::::::::::::uuc:::::::cccccc:::::ck::::::k k:::::k           y:::::::y        
+L::::::::::::::::::::::L u:::::::::::::::u c:::::::::::::::::ck::::::k  k:::::k           y:::::y         
+L::::::::::::::::::::::L  uu::::::::uu:::u  cc:::::::::::::::ck::::::k   k:::::k         y:::::y          
+LLLLLLLLLLLLLLLLLLLLLLLL    uuuuuuuu  uuuu    cccccccccccccccckkkkkkkk    kkkkkkk       y:::::y           
+                                                                                       y:::::y            
+                                                                                      y:::::y             
+                                                                                     y:::::y              
+                                                                                    y:::::y               
+                                                                                   yyyyyyy                
+                                                                                                                                                                                                                
  * 
  */
 
