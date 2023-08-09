@@ -4,7 +4,7 @@ This is a squid for indexing Lucky dApp contracts, for the Astar, Shiden and Shi
 
 Lucky dApp is available here: https://lucky.substrate.fi/
 
-this index get events from substrate or !ink events on 3 different contract, you can found these contracts here: https://github.com/GuiGou12358/lucky-contracts/tree/main/contracts
+this index get events from substrate or !ink events on 3 different contract, you can found these contracts here: [https://github.com/GuiGou12358/lucky-contracts/tree/main/contracts]()
 
 ## Event list
 
@@ -21,6 +21,113 @@ this index get events from substrate or !ink events on 3 different contract, you
   - RewardsClaimed
 
 check [processor.ts](src/processor.ts) for events handling
+
+## Query
+
+#### Accounts
+
+Get informations from a specific account
+
+```
+{
+  accountById(id: "WAs...z4f") {
+    totalClaimed
+    totalPending
+    totalRewards
+    totalStake
+    id
+  }
+}
+```
+
+Get the 10 accounts with the higher stake amount
+
+```
+{
+  accounts(limit: 10, orderBy: totalStake_DESC) {
+    id
+    totalStake
+  }
+}
+```
+
+All Accounts with pending rewards
+
+```
+{
+  accounts(where: {totalPending_gt: "0"}) {
+    totalPending
+    id
+  }
+}
+```
+
+#### Stakes
+
+Last 100 stake activity
+
+```
+{
+  stakes(limit: 100, orderBy: blockNumber_DESC) {
+    amount
+    blockNumber
+    era
+    type
+    account {
+      id
+    }
+  }
+}
+```
+
+Note that the stake entity store stake, unstake, and transfer activity
+This is specified in the 'type' field
+
+#### Rewards
+
+last 100 Rewards won from the raffle contract
+
+```
+{
+  rewards(limit: 100, orderBy: era_DESC) {
+    account {
+      id
+    }
+    amount
+    era
+  }
+}
+```
+
+#### RewardsClaimed
+
+Last 100 rewardsClaimed by raffle winners
+
+```
+{
+  rewardsClaimeds(limit: 100, orderBy: timestamp_DESC) {
+    account {
+      id
+    }
+    amount
+    blockNumber
+    timestamp
+  }
+}
+```
+
+#### DeveloperRewards
+
+Last 10 DeveloperRewards distributed to developer address
+
+```
+{
+  developerRewards(limit: 10, orderBy: era_DESC) {
+    amount
+    era
+  }
+}
+```
 
 ## Quickstart
 
