@@ -20,6 +20,8 @@ this index get events from substrate or !ink events on 3 different contract, you
   - PendingReward
   - RewardsClaimed
 
+check [processor.ts](src/processor.ts) for events handling
+
 ## Quickstart
 
 Dependencies: Node.js, Docker.
