@@ -1,15 +1,18 @@
 {
   "outDir": "src/types",
-  "specVersions": "https://shibuya.archive.subsquid.io/graphql",
-  "events": [
-    "DappsStaking.BondAndStake",
-    "DappsStaking.UnbondAndUnstake",
-    "DappsStaking.NominationTransfer",
-    "DappsStaking.Reward",
-    "DappsStaking.NewDappStakingEra"
-  ],
-  "calls": [ 
-  ],
-  "storage": [
-  ]
+  "specVersions": "https://v2.archive.subsquid.io/metadata/shibuya",
+  "pallets": {
+    "DappsStaking": {
+      "events": [
+        "BondAndStake",
+        "UnbondAndUnstake",
+        "NominationTransfer",
+        "Reward",
+        "NewDappStakingEra"
+      ],
+      "calls": [],
+      "storage": [],
+      "constants": []
+    }
+  }
 }

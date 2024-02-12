@@ -4,7 +4,9 @@ import {toHex, decodeHex} from "@subsquid/util-internal-hex"
 import {SubstrateBatchProcessor} from "@subsquid/substrate-processor"
 import { TypeormDatabase} from "@subsquid/typeorm-store"
 import {Like, In} from "typeorm"
-import {DappsStakingBondAndStakeEvent, DappsStakingNewDappStakingEraEvent, DappsStakingNominationTransferEvent, DappsStakingRewardEvent, DappsStakingUnbondAndUnstakeEvent} from "./types/events"
+import { encodeAddress } from "@polkadot/keyring";
+
+import { bondAndStake, newDappStakingEra, nominationTransfer, reward, unbondAndUnstake } from "./types/dapps-staking/events"
 
 import * as lucky_raffle from "./abi/lucky_raffle"
 import * as reward_manager from "./abi/reward_manager"
@@ -101,101 +103,45 @@ function getAccount(m: Map<string, Account>, id: string): Account {
 const start_block_network:number = start_block[network as unknown as keyof Network];
 
 export const processor = new SubstrateBatchProcessor()
-    .setDataSource({
-        archive: lookupArchive(network as unknown as KnownArchivesSubstrate, {release: 'FireSquid'}),
+    .setGateway(lookupArchive(network as unknown as KnownArchivesSubstrate, {release: 'ArrowSquid'}))
+    .setRpcEndpoint({
+        url: 'https://evm.shibuya.astar.network',
+        rateLimit: 10
     })
-    .addEvent('DappsStaking.BondAndStake', {
-        data: {
-            event: {
-                args: true,
-                extrinsic: {
-                    hash: true,
-                    fee: true,
-                },
-            },
+    .addEvent({
+        name: [
+            bondAndStake.name,
+            unbondAndUnstake.name,
+            newDappStakingEra.name, 
+            nominationTransfer.name
+        ],
+        call: true,
+        extrinsic: true
+      })
+      .setFields({
+        extrinsic: {
+          hash: true,
+          fee: true
         },
-        range: {
-            from: start_block_network
-        }
-    } as const)
-    .addEvent('DappsStaking.UnbondAndUnstake', {
-        data: {
-            event: {
-                args: true,
-                extrinsic: {
-                    hash: true,
-                    fee: true,
-                },
-            },
+        block: {
+          timestamp: true
         },
-        range: {
-            from: start_block_network
+        event: {
+            args: true
         }
-    } as const)
-    .addEvent('DappsStaking.NominationTransfer', {
-        data: {
-            event: {
-                args: true,
-                extrinsic: {
-                    hash: true,
-                    fee: true,
-                },
-            },
-        },
-        range: {
-            from: start_block_network
-        }
-    } as const)
-    .addEvent('DappsStaking.Reward', {
-        data: {
-            event: {
-                args: true,
-                extrinsic: {
-                    hash: true,
-                    fee: true,
-                },
-            },
-        },
-        range: {
-            from: start_block_network
-        }
-    } as const)
-    .addEvent('DappsStaking.NewDappStakingEra', {
-        data: {
-            event: {
-                args: true,
-                extrinsic: {
-                    hash: true,
-                    fee: true,
-                },
-            },
-        },
-        range: {
-            from: 0
-        }
-    } as const)
-
+      })
+      .setBlockRange({
+        from: start_block_network
+      })
+    
 /************************* */
 /* subscribe to INK events */
 /************************* */
 
-    .addContractsContractEmitted(REWARD_CONTRACT_ADDRESS, {
-        data: {
-            event: {args: true}
-        },
-        range: {
-            from: start_block_network
-        }
-    } as const)
-    .addContractsContractEmitted(RAFFLE_CONTRACT_ADDRESS, {
-        data: {
-            event: {args: true}
-        },
-        range: {
-            from: start_block_network
-        }
-    } as const);
-
+    .addContractsContractEmitted({
+        contractAddress: [REWARD_CONTRACT_ADDRESS, RAFFLE_CONTRACT_ADDRESS],
+        extrinsic: true
+    })
 
 /************************ */
 /* LFG! Run the processor */
@@ -227,18 +173,20 @@ processor.run(database, async (ctx) => {
     // for each Object we insert a string in "account" and we will deal with it later
     for (const block of ctx.blocks) {
         
-        for (const item of block.items) {
-
+        //for (const item of block.items) {
+        //for (let item of orderItems(block)) {
+        for (let e of block.events) {
+            const item = e
             /*****************************/
             // run the ink part
             /*****************************/
 
-            if (item.name === 'Contracts.ContractEmitted' && item.event.args.contract === RAFFLE_CONTRACT_ADDRESS) {
-                const data = item.event.args.data;
+            if (item.name === 'Contracts.ContractEmitted' && item.args.contract === RAFFLE_CONTRACT_ADDRESS) {
+                const data = item.args.data;
                 const event = lucky_raffle.decodeEvent(data);
                 if (event.__kind === 'RaffleDone') {
                     const raffle = {
-                        id: item.event.id,
+                        id: item.id,
                         era: BigInt(event.era),
                         totalRewards: event.pendingRewards,
                         nbWinners: BigInt(event.nbWinners),
@@ -249,13 +197,13 @@ processor.run(database, async (ctx) => {
                 }
             }
 
-            if (item.name === 'Contracts.ContractEmitted' && item.event.args.contract === REWARD_CONTRACT_ADDRESS) {
-                const data = item.event.args.data;
+            if (item.name === 'Contracts.ContractEmitted' && item.args.contract === REWARD_CONTRACT_ADDRESS) {
+                const data = item.args.data;
                 const event = reward_manager.decodeEvent(data);
                 if (event.__kind === 'PendingReward') {
                
                     const reward = {
-                        id: item.event.id, 
+                        id: item.id, 
                         account:ss58.codec("astar").encode(event.account), // string
                         era: BigInt(event.era),
                         amount: event.amount
@@ -264,7 +212,7 @@ processor.run(database, async (ctx) => {
                 }
                 if (event.__kind === 'RewardsClaimed') {
                     const reward_claimed = {
-                        id: item.event.id,
+                        id: item.id,
                         account: ss58.codec("astar").encode(event.account), // string
                         amount: event.amount,
                         blockNumber: BigInt(block.header.height),
@@ -280,8 +228,8 @@ processor.run(database, async (ctx) => {
 
             if (((item.name === "DappsStaking.NewDappStakingEra"))){
                 const era = {
-                    id: item.event.id,
-                    era: BigInt(item.event.args),
+                    id: item.id,
+                    era: BigInt(item.args),
                     blockNumber: BigInt(block.header.height)
                 };
                 eras.push(era);
@@ -290,17 +238,17 @@ processor.run(database, async (ctx) => {
             }
 
             if (((item.name === "DappsStaking.BondAndStake"))){
-                const e = new DappsStakingBondAndStakeEvent(ctx,item.event);
-                let rec :{account: Uint8Array, contract: SmartContract, amount: bigint};
-                let [account, contract, amount] = e.asV7;
+                //const e = bondAndStake(ctx,item);
+                let rec :{account: String, contract: SmartContract, amount: bigint};
+                let [account, contract, amount] = bondAndStake.v7.decode(item)
                 rec={account, contract, amount};
                 
-                if (item.event.args[1].value === DAPP_CONTRACT_ADDRESS) { // 0x5a91a4a61aaf75a2d8ad377339412bbcaf56898db47201da577a49503956e93f
-                    const tx_from = ss58.codec("astar").encode(decodeHex(item.event.args[0]));
+                if (item.args[1].value === DAPP_CONTRACT_ADDRESS) { // 0x5a91a4a61aaf75a2d8ad377339412bbcaf56898db47201da577a49503956e93f
+                    const tx_from = ss58.codec("astar").encode(decodeHex(item.args[0]));
                     const stake = {
-                        id: item.event.id,  
+                        id: item.id,  
                         account: tx_from, // string
-                        amount: BigInt(item.event.args[2]),
+                        amount: BigInt(item.args[2]),
                         type: "stake",
                         era: current_era,
                         blockNumber: BigInt(block.header.height)
@@ -309,17 +257,17 @@ processor.run(database, async (ctx) => {
                 }
             }
             if (((item.name === "DappsStaking.UnbondAndUnstake"))){
-                const e = new DappsStakingUnbondAndUnstakeEvent(ctx,item.event);
-                let rec :{account: Uint8Array, contract: SmartContract, amount: bigint};
-                let [account, contract, amount] = e.asV27;
+                //const e = new DappsStakingUnbondAndUnstakeEvent(ctx,item.event);
+                let rec :{account: String, contract: SmartContract, amount: bigint};
+                let [account, contract, amount] = unbondAndUnstake.v27.decode(item);
                 rec={account, contract, amount};
                 
-                if (item.event.args[1].value === DAPP_CONTRACT_ADDRESS) { // 0x5a91a4a61aaf75a2d8ad377339412bbcaf56898db47201da577a49503956e93f
-                    const tx_from = ss58.codec("astar").encode(decodeHex(item.event.args[0]));
+                if (item.args[1].value === DAPP_CONTRACT_ADDRESS) { // 0x5a91a4a61aaf75a2d8ad377339412bbcaf56898db47201da577a49503956e93f
+                    const tx_from = ss58.codec("astar").encode(decodeHex(item.args[0]));
                     const stake = {
-                        id: item.event.id,  
+                        id: item.id,  
                         account: tx_from,
-                        amount: BigInt(0) - BigInt(item.event.args[2]),
+                        amount: BigInt(0) - BigInt(item.args[2]),
                         type: "unstake",
                         era: current_era,
                         blockNumber: BigInt(block.header.height)
@@ -329,17 +277,20 @@ processor.run(database, async (ctx) => {
             }
 
             if (((item.name === "DappsStaking.NominationTransfer"))){
-                const e = new DappsStakingNominationTransferEvent(ctx,item.event);
-                let rec :{account: Uint8Array, origin: SmartContract, amount: bigint, target: SmartContract};
-                let [account, origin, amount, target] = e.asV49;
+                //const e = new DappsStakingNominationTransferEvent(ctx,item.event);
+                let rec :{account: String, origin: SmartContract, amount: bigint, target: SmartContract};
+                let [account, origin, amount, target] = nominationTransfer.v49.decode(item);
                 rec={account, origin, amount, target};
-                const is_target = toHex(target.value) === DAPP_CONTRACT_ADDRESS;
-                const is_origin = toHex(origin.value) === DAPP_CONTRACT_ADDRESS;
+                const is_target = target.value === DAPP_CONTRACT_ADDRESS;
+                const is_origin = origin.value === DAPP_CONTRACT_ADDRESS;
 
                 if (is_origin || is_target) {
-                    const tx_from = ss58.codec("astar").encode(account);
+                    //console.log(origin.value, target.value, account)
+                    
+                    const tx_from = encodeAddress(account,5);
+                    //console.log
                     const stake = {
-                        id: item.event.id,  
+                        id: item.id,  
                         account: tx_from, // string
                         amount: is_target ? BigInt(0) + BigInt(amount) : BigInt(0) - BigInt(amount) ,
                         type: "transfer",
@@ -356,18 +307,18 @@ processor.run(database, async (ctx) => {
             */
             if (((item.name === "DappsStaking.Reward"))){
                 
-                const e = new DappsStakingRewardEvent(ctx,item.event);
-                let rec :{account: Uint8Array, contract: SmartContract, era: number,  amount: bigint};
-                let [account, contract, era, amount ] = e.asV13;
+                //const e = new DappsStakingRewardEvent(ctx,item.event);
+                let rec :{account: String, contract: SmartContract, era: number,  amount: bigint};
+                let [account, contract, era, amount ] = reward.v13.decode(item);
                 rec={account, contract, era, amount};
 
-                const is_developper = toHex(ss58.decode(ss58.codec("astar").encode(account)).bytes) === DEVELOPPER_ADDRESS;
-                const is_contract = toHex(contract.value) === DAPP_CONTRACT_ADDRESS;
+                const is_developper = ss58.codec("astar").encode(ss58.decode(account).bytes) === DEVELOPPER_ADDRESS;
+                const is_contract = contract.value === DAPP_CONTRACT_ADDRESS;
                 
                 if ( is_developper && is_contract) {
                     const developper_reward = {
-                        id: item.event.id,  
-                        account: ss58.codec("astar").encode(account), // string
+                        id: item.id,  
+                        account: ss58.codec("astar").encode(ss58.decode(account).bytes), // string
                         era: current_era,
                         amount: BigInt(amount),
                     };
